@@ -20,6 +20,7 @@ CREATE TABLE ad_group_extra_info AS
 WITH LandingPageRelevance AS (
   SELECT
     campaign_id,
+    ANY_VALUE(reason) AS relevance_score_reason,
     MIN(relevance_score) AS relevance_score
   FROM landing_page_relevance
   GROUP BY 1
@@ -41,6 +42,7 @@ DedupCta AS (
 SELECT
   AGA.*,
   IFNULL(LPR.relevance_score, -1) AS relevance_score,
+  IFNULL(LPR.relevance_score_reason, 'Unknown') AS relevance_score_reason,
   IFNULL(U.has_usp, -1) AS has_usp,
   IFNULL(C.has_cta, -1) AS has_cta,
   LOWER(RI.ad) LIKE '%keyword:%' AS has_dki

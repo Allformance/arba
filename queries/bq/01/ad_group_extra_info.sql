@@ -21,6 +21,7 @@ CREATE OR REPLACE TABLE `{target_dataset}.ad_group_extra_info` AS (
   WITH LandingPageRelevance AS (
     SELECT
       campaign_id,
+      ANY_VALUE(reason) AS relevance_score_reason,
       MIN(relevance_score) AS relevance_score
     FROM `{dataset}.landing_page_relevance`
     GROUP BY 1
@@ -42,6 +43,7 @@ CREATE OR REPLACE TABLE `{target_dataset}.ad_group_extra_info` AS (
   SELECT
     AGA.*,
     IFNULL(LPR.relevance_score, -1) AS relevance_score,
+    IFNULL(LPR.relevance_score_reason, 'Unknown') AS relevance_score_reason,
     U.has_usp,
     C.has_cta,
     REGEXP_CONTAINS(LOWER(RI.ad), 'keyword:') AS has_dki
