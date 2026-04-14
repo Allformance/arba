@@ -53,7 +53,7 @@ CREATE OR REPLACE TABLE `{target_dataset}.ad_group_extra_info` AS (
   LEFT JOIN `{target_dataset}.rsa_input` AS RI
     USING (ad_group_ad_id)
   LEFT JOIN DedupUsp AS U
-    USING (ad)
+    ON U.ad = REGEXP_REPLACE(CONCAT(AGA.headlines, '|', AGA.descriptions), r'[(),]', '')
   LEFT JOIN DedupCta AS C
-    USING (ad)
+    ON C.ad = REGEXP_REPLACE(CONCAT(AGA.headlines, '|', AGA.descriptions), r'[(),]', '')
 );

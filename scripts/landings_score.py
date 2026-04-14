@@ -143,7 +143,8 @@ def main(
     for campaign in items:
       if campaigns_to_process < 0:
         report = GarfReport(
-          results=data, column_names=['campaign_id', 'url', 'relevance_score']
+          results=data,
+          column_names=['campaign_id', 'url', 'relevance_score', 'reason'],
         )
         bq_writer.write(report, 'landing_page_relevance')
         return
