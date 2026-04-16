@@ -158,7 +158,7 @@ enable_telemetry() {
   enable_telemetry_apis
   add_telemetry_roles
 
-  gcloud run jobs update ${APP_NAME} --region $LOCATION \
+  gcloud run jobs update ${APP_NAME} --region $LOCATION --project $PROJECT_ID \
     --update-env-vars OTEL_EXPORTER_GCP_PROJECT_ID=$PROJECT_ID,OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com:443
 }
 
@@ -183,7 +183,8 @@ schedule() {
       --schedule="0 0 * * *" \
       --uri="https://run.googleapis.com/v2/projects/$PROJECT_ID/locations/$LOCATION/jobs/${APP_NAME}:run" \
       --http-method=POST \
-      --oauth-service-account-email=${SERVICE_ACCOUNT}
+      --oauth-service-account-email=${SERVICE_ACCOUNT} \
+      --project $PROJECT_ID
   else
     echo "Creating new Cloud Scheduler job: $SCHEDULER_JOB_NAME"
     gcloud scheduler jobs create http $SCHEDULER_JOB_NAME \
@@ -191,7 +192,8 @@ schedule() {
       --schedule="0 0 * * *" \
       --uri="https://run.googleapis.com/v2/projects/$PROJECT_ID/locations/$LOCATION/jobs/${APP_NAME}:run" \
       --http-method=POST \
-      --oauth-service-account-email=${SERVICE_ACCOUNT}
+      --oauth-service-account-email=${SERVICE_ACCOUNT} \
+      --project $PROJECT_ID
   fi
 }
 
