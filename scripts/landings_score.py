@@ -139,12 +139,13 @@ def main(
   data = []
   bq_writer = writer.create_writer('bq', dataset=dataset)
   campaigns_to_process = min(campaigns_to_process, len(landings))
+  report_column_names = ['campaign_id', 'url', 'relevance_score', 'reason']
   for landing, items in landings.to_dict('url').items():
     for campaign in items:
       if campaigns_to_process < 0:
         report = GarfReport(
           results=data,
-          column_names=['campaign_id', 'url', 'relevance_score', 'reason'],
+          column_names=report_column_names,
         )
         bq_writer.write(report, 'landing_page_relevance')
         return
@@ -164,7 +165,7 @@ def main(
       campaigns_to_process = campaigns_to_process - 1
   report = GarfReport(
     results=data,
-    column_names=['campaign_id', 'url', 'relevance_score', 'reason'],
+    column_names=report_column_names,
   )
   bq_writer.write(report, 'landing_page_relevance')
   return

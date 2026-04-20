@@ -147,4 +147,4 @@ ds.campaign_performance.datasourceName=campaign_performance&
 ds.campaign_performance.projectId=YOUR_PROJECT_ID&
 ds.campaign_performance.type=TABLE&
 ds.campaign_performance.datasetId=YOUR_DATASET_ID&
-ds.campaign_performance.tableId=campaign_performance
+ds.campaign_performance.tableId=campaign_performance&
