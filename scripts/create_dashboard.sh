@@ -29,10 +29,14 @@ case $1 in
   -L|--link)
     return_link=1
     ;;
-	-n|--report-name)
+  -n|--report-name)
 		shift
 		report_name=`echo "$1" | tr  " " "_"`
 		;;
+  -r|--report-id)
+    shift
+    report_id=$1
+    ;;
 	-h|--help)
 		echo -e $usage;
 		exit
