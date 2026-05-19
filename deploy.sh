@@ -35,7 +35,11 @@ else
   read -p "Please enter the GEMINI_API_KEY: " GEMINI_API_KEY
 fi
 
-read -p "Please enter the Google Ads Account: " ACCOUNT
+if [[ -n "$ACCOUNT" ]]; then
+  echo "Using Google Ads Account from ACCOUNT."
+else
+  read -p "Please enter the Google Ads Account: " ACCOUNT
+fi
 
 copy_googleads_config() {
   if ! gcloud storage ls gs://$PROJECT_ID > /dev/null 2> /dev/null; then
@@ -43,7 +47,9 @@ copy_googleads_config() {
     gcloud storage buckets create --uniform-bucket-level-access gs://$PROJECT_ID
   fi
   echo 'Copying google-ads.yaml to GCS'
-  if [[ -f ./google-ads.yaml ]]; then
+  if [[ -n "$GOOGLE_ADS_CONFIG" && -f "$GOOGLE_ADS_CONFIG" ]]; then
+    gcloud storage cp --content-type="text/plain" "$GOOGLE_ADS_CONFIG" $GCS_BASE_PATH/google-ads.yaml
+  elif [[ -f ./google-ads.yaml ]]; then
     gcloud storage cp --content-type="text/plain" ./google-ads.yaml $GCS_BASE_PATH/google-ads.yaml
   elif [[ -f $HOME/google-ads.yaml ]]; then
     gcloud storage cp --content-type="text/plain" $HOME/google-ads.yaml $GCS_BASE_PATH/google-ads.yaml

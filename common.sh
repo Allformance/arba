@@ -19,11 +19,11 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-LOCATION=us-central1
-REPOSITORY=google-marketing-solutions
-DATASET=arba
-IMAGE_NAME=arba
-APP_NAME=arba
+LOCATION=${LOCATION:-us-central1}
+REPOSITORY=${REPOSITORY:-google-marketing-solutions}
+DATASET=${DATASET:-arba}
+IMAGE_NAME=${IMAGE_NAME:-arba}
+APP_NAME=${APP_NAME:-arba}
 
 init_project_id() {
   if [[ -n "$GOOGLE_CLOUD_PROJECT" ]]; then
