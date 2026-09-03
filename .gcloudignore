@@ -3,3 +3,5 @@
 .gcloudignore
 *.env
 credentials/
+.tools/
+.venv/
