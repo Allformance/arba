@@ -1,0 +1,5 @@
+fastapi[standard]>=0.115.0
+uvicorn[standard]>=0.30.0
+google-auth[requests]>=2.29.0
+google-cloud-storage>=2.18.0
+requests>=2.32.0
