@@ -12,11 +12,11 @@ around an existing Cloud Run job.
 2. Google OAuth returns to `/oauth/callback`.
 3. The service exchanges the code for a refresh token.
 4. The service lists Google Ads accounts available to the user.
-5. The user chooses an optional MCC/login customer and one or more accounts.
+5. The user chooses either an MCC or one or more individual accounts.
 6. The service writes `google-ads.yaml` to Secret Manager and, if configured,
    to GCS for ARBA compatibility.
-7. The service can update the ARBA Cloud Run job env vars:
-   `ACCOUNT` and `ADS_CONFIG`.
+7. The service automatically updates the ARBA Cloud Run job env vars:
+   `ACCOUNT` and `ADS_CONFIG`, and can start the job immediately.
 
 ## Required Environment Variables
 

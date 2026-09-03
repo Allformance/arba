@@ -248,7 +248,17 @@ def discover_accounts(access_token: str) -> list[dict[str, Any]]:
     )
     for child in search_customer_clients(access_token, customer_id):
       existing = accounts_by_id.get(child["id"])
-      if not existing or child.get("level", 99) < existing.get("level", 99):
+      child_level = child.get("level", 99)
+      existing_level = existing.get("level", 99) if existing else 99
+      if (
+        not existing
+        or child_level < existing_level
+        or (
+          child_level == existing_level
+          and child.get("manager", False)
+          and not existing.get("manager", False)
+        )
+      ):
         accounts_by_id[child["id"]] = child
   return sorted(
     accounts_by_id.values(),
@@ -406,20 +416,49 @@ def render_page(title: str, body: str) -> HTMLResponse:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)}</title>
   <style>
-    body {{ font-family: Inter, Arial, sans-serif; margin: 32px; color: #1f2937; }}
-    main {{ max-width: 920px; margin: 0 auto; }}
-    .card {{ border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 16px 0; }}
-    .row {{ display: flex; align-items: start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }}
+    * {{ box-sizing: border-box; letter-spacing: 0; }}
+    body {{ min-height: 100vh; margin: 0; background: #f6f7f9; color: #202124; font-family: Inter, Arial, sans-serif; }}
+    main {{ width: min(680px, calc(100% - 32px)); margin: 56px auto; padding: 32px; background: #fff; border: 1px solid #e0e3e7; border-radius: 8px; box-shadow: 0 8px 28px rgba(32, 33, 36, 0.08); }}
+    .brand {{ margin-bottom: 28px; color: #5f6368; font-size: 13px; font-weight: 700; text-transform: uppercase; }}
+    h1 {{ margin: 0 0 10px; font-size: 28px; line-height: 1.25; }}
+    h2 {{ margin: 0 0 12px; font-size: 18px; }}
+    p {{ line-height: 1.55; }}
+    form {{ margin-top: 24px; }}
+    .card {{ border: 1px solid #dfe3e8; border-radius: 8px; padding: 18px; margin: 18px 0; background: #fff; }}
+    .row {{ display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 8px; border-bottom: 1px solid #edf0f2; transition: background 120ms ease; }}
     .row:last-child {{ border-bottom: 0; }}
+    .row:hover {{ background: #f8fafd; }}
+    .row input {{ flex: 0 0 auto; width: 17px; height: 17px; accent-color: #1a73e8; }}
+    .row label {{ flex: 1; margin: 0; cursor: pointer; line-height: 1.4; }}
     .muted {{ color: #6b7280; font-size: 14px; }}
-    .badge {{ display: inline-block; border: 1px solid #d1d5db; border-radius: 999px; padding: 2px 8px; font-size: 12px; margin-left: 8px; }}
-    button, .button {{ background: #2563eb; border: 0; border-radius: 6px; color: white; padding: 10px 14px; text-decoration: none; cursor: pointer; }}
-    select, input[type=text] {{ width: 100%; padding: 8px; margin-top: 4px; }}
+    .badge {{ display: inline-block; margin-left: 8px; padding: 2px 7px; border: 1px solid #b9dfc6; border-radius: 999px; background: #edf7f0; color: #137333; font-size: 11px; }}
+    .mode-switch {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border: 1px solid #dfe3e8; border-radius: 8px; background: #f1f3f4; margin: 20px 0 24px; }}
+    .mode-option {{ margin: 0; position: relative; }}
+    .mode-option input {{ position: absolute; opacity: 0; pointer-events: none; }}
+    .mode-option span {{ display: block; min-height: 42px; padding: 11px 14px; border-radius: 6px; text-align: center; cursor: pointer; color: #5f6368; }}
+    .mode-option input:checked + span {{ background: #fff; color: #174ea6; font-weight: 600; box-shadow: 0 1px 3px rgba(32, 33, 36, 0.16); }}
+    .mode-option input:focus-visible + span {{ outline: 2px solid #1a73e8; outline-offset: 1px; }}
+    .account-group + .account-group {{ margin-top: 20px; }}
+    .account-group h3 {{ margin: 0 8px 6px; color: #5f6368; font-size: 13px; font-weight: 600; }}
+    button, .button {{ display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 10px 18px; border: 0; border-radius: 6px; background: #1a73e8; color: white; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 120ms ease, box-shadow 120ms ease; }}
+    form > button {{ margin-top: 18px; }}
+    button:hover, .button:hover {{ background: #1765cc; box-shadow: 0 2px 6px rgba(26, 115, 232, 0.24); }}
+    button:focus-visible, .button:focus-visible {{ outline: 3px solid rgba(26, 115, 232, 0.3); outline-offset: 2px; }}
+    select, input[type=text] {{ width: 100%; min-height: 44px; padding: 9px 11px; margin-top: 6px; border: 1px solid #bdc1c6; border-radius: 6px; background: #fff; color: #202124; font: inherit; }}
+    select:focus, input[type=text]:focus {{ border-color: #1a73e8; outline: 2px solid rgba(26, 115, 232, 0.16); }}
     label {{ display: block; margin: 12px 0 6px; }}
+    [hidden] {{ display: none !important; }}
+    @media (max-width: 560px) {{
+      main {{ width: 100%; min-height: 100vh; margin: 0; padding: 28px 20px; border: 0; border-radius: 0; box-shadow: none; }}
+      h1 {{ font-size: 25px; }}
+      .mode-option span {{ padding-inline: 8px; }}
+      button, .button {{ width: 100%; }}
+    }}
   </style>
 </head>
 <body>
 <main>
+  <div class="brand">ARBA</div>
   {body}
 </main>
 </body>
@@ -438,8 +477,8 @@ def healthz() -> dict[str, str]:
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
   body = """
-    <h1>ARBA Google Ads onboarding</h1>
-    <p>Connect a Google Ads user, choose accounts, and update ARBA credentials.</p>
+    <h1>Connect Google Ads</h1>
+    <p class="muted">Sign in and choose the advertising data to include in ARBA.</p>
     <p><a class="button" href="/connect">Connect Google Ads</a></p>
   """
   return render_page("ARBA onboarding", body)
@@ -492,102 +531,207 @@ def oauth_callback(code: str | None = None, state: str | None = None, error: str
 
 
 def render_account_form(draft_id: str, accounts: list[dict[str, Any]]) -> HTMLResponse:
-  login_options = ['<option value="">Direct access / no MCC login customer</option>']
-  for account in accounts:
-    if account.get("manager"):
+  managers = [account for account in accounts if account.get("manager")]
+  clients = [account for account in accounts if not account.get("manager")]
+  account_names = {account["id"]: account["name"] for account in accounts}
+
+  manager_options = []
+  for manager in managers:
+    manager_id = html.escape(manager["id"])
+    manager_name = html.escape(manager["name"])
+    manager_options.append(
+      f'<option value="{manager_id}">{manager_name} ({manager_id})</option>'
+    )
+
+  grouped_clients: dict[str, list[dict[str, Any]]] = {}
+  for account in clients:
+    grouped_clients.setdefault(account.get("login_customer_id") or "", []).append(account)
+
+  account_groups = []
+  for source_id, group in grouped_clients.items():
+    if source_id:
+      source_name = account_names.get(source_id, source_id)
+      group_title = f"Accounts under {source_name}"
+    else:
+      group_title = "Available accounts"
+    rows = []
+    for account in group:
       account_id = html.escape(account["id"])
       account_name = html.escape(account["name"])
-      login_options.append(
-        f'<option value="{account_id}">{account_name} ({account_id})</option>'
+      account_status = html.escape(account.get("status", "UNKNOWN"))
+      rows.append(
+        f"""
+        <div class="row">
+          <input type="checkbox" name="account_ids" value="{account_id}" id="account-{account_id}">
+          <label for="account-{account_id}">
+            {account_name} ({account_id})
+            <span class="badge">{account_status}</span>
+          </label>
+        </div>
+        """
       )
-  account_rows = []
-  for account in accounts:
-    if account.get("manager"):
-      continue
-    label = f'{account["name"]} ({account["id"]})'
-    account_id = html.escape(account["id"])
-    account_status = html.escape(account.get("status", "UNKNOWN"))
-    account_source = html.escape(account.get("login_customer_id") or "direct access")
-    account_rows.append(
-      f"""
-      <div class="row">
-        <input type="checkbox" name="account_ids" value="{account_id}" id="account-{account_id}">
-        <label for="account-{account_id}">
-          {html.escape(label)}
-          <span class="badge">{account_status}</span>
-          <div class="muted">Discovered via {account_source}</div>
-        </label>
-      </div>
-      """
+    account_groups.append(
+      f'<div class="account-group"><h3>{html.escape(group_title)}</h3>{"".join(rows)}</div>'
     )
+
+  has_managers = bool(manager_options)
+  has_clients = bool(account_groups)
+  if has_managers and has_clients:
+    mode_selector = """
+    <div class="mode-switch">
+      <label class="mode-option">
+        <input type="radio" name="target_type" value="manager" checked>
+        <span>MCC</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="target_type" value="accounts">
+        <span>Accounts</span>
+      </label>
+    </div>
+    """
+  elif has_managers:
+    mode_selector = '<input type="hidden" name="target_type" value="manager">'
+  else:
+    mode_selector = '<input type="hidden" name="target_type" value="accounts">'
   body = f"""
-    <h1>Select Google Ads accounts</h1>
-    <p class="muted">The refresh token is stored as a temporary onboarding draft in Secret Manager.</p>
+    <h1>Choose what to analyze</h1>
     <form method="post" action="/configure">
       <input type="hidden" name="draft_id" value="{html.escape(draft_id)}">
-      <label for="login_customer_id">MCC / login customer</label>
-      <select id="login_customer_id" name="login_customer_id">
-        {''.join(login_options)}
-      </select>
-      <div class="card">
-        <h2>Accounts</h2>
-        {''.join(account_rows) if account_rows else '<p>No non-manager accounts found.</p>'}
+      {mode_selector}
+      <div id="manager-section" {'' if has_managers else 'hidden'}>
+        <label for="manager_id">MCC account</label>
+        <select id="manager_id" name="manager_id" {'required' if has_managers else 'disabled'}>
+          {''.join(manager_options)}
+        </select>
       </div>
-      <label>
-        <input type="checkbox" name="run_job_update" value="true" checked>
-        Update target ARBA Cloud Run job
-      </label>
-      <button type="submit">Save ARBA credentials</button>
+      <div id="accounts-section" class="card" {'hidden' if has_managers else ''}>
+        {''.join(account_groups) if account_groups else '<p>No individual accounts found.</p>'}
+      </div>
+      <button type="submit">Continue</button>
     </form>
+    <script>
+      const radios = document.querySelectorAll('input[name="target_type"]');
+      const managerSection = document.getElementById('manager-section');
+      const accountsSection = document.getElementById('accounts-section');
+      const managerSelect = document.getElementById('manager_id');
+      const accountInputs = accountsSection.querySelectorAll('input[name="account_ids"]');
+      const form = document.querySelector('form');
+
+      function selectedTargetType() {{
+        const selected = document.querySelector('input[name="target_type"]:checked');
+        const hidden = document.querySelector('input[name="target_type"][type="hidden"]');
+        return selected ? selected.value : hidden.value;
+      }}
+
+      function syncMode() {{
+        const managerMode = selectedTargetType() === 'manager';
+        managerSection.hidden = !managerMode;
+        accountsSection.hidden = managerMode;
+        if (managerSelect) {{
+          managerSelect.disabled = !managerMode;
+          managerSelect.required = managerMode;
+        }}
+        accountInputs.forEach((input) => {{ input.disabled = managerMode; }});
+      }}
+
+      radios.forEach((radio) => radio.addEventListener('change', syncMode));
+      accountInputs.forEach((input) => input.addEventListener('change', () => {{
+        accountInputs.forEach((item) => item.setCustomValidity(''));
+      }}));
+      form.addEventListener('submit', (event) => {{
+        const accountMode = selectedTargetType() === 'accounts';
+        if (accountMode && accountInputs.length && !Array.from(accountInputs).some((input) => input.checked)) {{
+          event.preventDefault();
+          accountInputs[0].setCustomValidity('Select at least one account');
+          accountInputs[0].reportValidity();
+        }}
+      }});
+      syncMode();
+    </script>
   """
   return render_page("Select accounts", body)
+
+
+def resolve_target(
+  accounts: list[dict[str, Any]],
+  target_type: str,
+  manager_id: str,
+  account_ids: list[str] | None,
+) -> tuple[list[str], str | None, str, str]:
+  accounts_by_id = {account["id"]: account for account in accounts}
+  manager_id = manager_id.strip().replace("-", "")
+  selected_ids = list(
+    dict.fromkeys(account_id.strip().replace("-", "") for account_id in account_ids or [])
+  )
+
+  if target_type == "manager":
+    manager = accounts_by_id.get(manager_id)
+    if not manager or not manager.get("manager"):
+      raise HTTPException(status_code=400, detail="Select an available manager account")
+    login_customer_id = manager.get("login_customer_id") or manager_id
+    label = f'{manager["name"]} ({manager_id})'
+    return [manager_id], login_customer_id, "MCC", label
+
+  if target_type != "accounts":
+    raise HTTPException(status_code=400, detail="Unknown account selection type")
+  if not selected_ids:
+    raise HTTPException(status_code=400, detail="Select at least one account")
+
+  selected_accounts = []
+  for account_id in selected_ids:
+    account = accounts_by_id.get(account_id)
+    if not account or account.get("manager"):
+      raise HTTPException(status_code=400, detail=f"Unknown account: {account_id}")
+    selected_accounts.append(account)
+
+  login_customer_ids = {
+    account.get("login_customer_id") or "" for account in selected_accounts
+  }
+  if len(login_customer_ids) > 1:
+    raise HTTPException(
+      status_code=400,
+      detail="Selected accounts belong to different MCCs. Choose accounts from one MCC.",
+    )
+  login_customer_id = next(iter(login_customer_ids)) or None
+  labels = ", ".join(
+    f'{account["name"]} ({account["id"]})' for account in selected_accounts
+  )
+  return selected_ids, login_customer_id, "Accounts", labels
 
 
 @app.post("/configure", response_class=HTMLResponse)
 def configure(
   draft_id: str = Form(...),
-  login_customer_id: str = Form(""),
+  target_type: str = Form(...),
+  manager_id: str = Form(""),
   account_ids: list[str] | None = Form(default=None),
-  run_job_update: str | None = Form(default=None),
 ) -> HTMLResponse:
   settings = get_settings()
   require_config(settings)
   if not draft_id.startswith(settings.draft_secret_prefix):
     raise HTTPException(status_code=400, detail="Invalid draft id")
-  account_ids = [account_id.strip().replace("-", "") for account_id in account_ids or []]
-  if not account_ids:
-    raise HTTPException(status_code=400, detail="Select at least one account")
-
   draft = json.loads(access_secret(settings.google_cloud_project, draft_id))
   if int(draft.get("expires_at", 0)) < int(time.time()):
     delete_secret(settings.google_cloud_project, draft_id)
     raise HTTPException(status_code=400, detail="Onboarding draft expired. Connect again.")
 
-  known_ids = {account["id"] for account in draft.get("accounts", [])}
-  unknown = sorted(set(account_ids) - known_ids)
-  if unknown:
-    raise HTTPException(status_code=400, detail=f"Unknown account ids: {', '.join(unknown)}")
-
-  login_customer_id = login_customer_id.strip().replace("-", "")
-  yaml_text = make_yaml(draft["refresh_token"], login_customer_id or None)
-  storage_actions: list[str] = []
+  selected_ids, login_customer_id, selection_type, selection_label = resolve_target(
+    draft.get("accounts", []), target_type, manager_id, account_ids
+  )
+  yaml_text = make_yaml(draft["refresh_token"], login_customer_id)
 
   if settings.write_secret_manager:
     put_secret(settings.arba_project, settings.arba_google_ads_secret, yaml_text)
-    storage_actions.append(
-      f"Secret Manager: {settings.arba_project}/{settings.arba_google_ads_secret}"
-    )
 
   ads_config = ""
   if settings.write_gcs:
     if not settings.arba_gcs_bucket:
       raise HTTPException(status_code=500, detail="ARBA_GCS_BUCKET is required when WRITE_GCS=true")
     ads_config = upload_to_gcs(settings.arba_gcs_bucket, settings.arba_gcs_object, yaml_text)
-    storage_actions.append(f"GCS: {ads_config}")
 
-  update_requested = bool(run_job_update) and settings.update_cloud_run_job
+  update_requested = settings.update_cloud_run_job
   if update_requested:
-    env_vars = {"ACCOUNT": ",".join(account_ids)}
+    env_vars = {"ACCOUNT": ",".join(selected_ids)}
     if ads_config:
       env_vars["ADS_CONFIG"] = ads_config
     update_cloud_run_job_env(
@@ -596,29 +740,26 @@ def configure(
       settings.arba_job_name,
       env_vars,
     )
-    storage_actions.append(
-      f"Cloud Run job updated: {settings.arba_project}/{settings.arba_region}/{settings.arba_job_name}"
-    )
 
   if update_requested and settings.run_arba_job_after_update:
-    operation_name = run_cloud_run_job(
+    run_cloud_run_job(
       settings.arba_project,
       settings.arba_region,
       settings.arba_job_name,
     )
-    storage_actions.append(f"Cloud Run job started: {operation_name}")
 
   delete_secret(settings.google_cloud_project, draft_id)
 
-  safe_login = login_customer_id or "direct access"
+  status_message = (
+    "The data update has started."
+    if update_requested and settings.run_arba_job_after_update
+    else "The setup has been saved."
+  )
   body = f"""
-    <h1>ARBA credentials saved</h1>
+    <h1>Setup complete</h1>
     <div class="card">
-      <p><strong>Login customer:</strong> {html.escape(safe_login)}</p>
-      <p><strong>Accounts:</strong> {html.escape(", ".join(account_ids))}</p>
-      <p><strong>Actions:</strong></p>
-      <ul>{''.join(f'<li>{html.escape(action)}</li>' for action in storage_actions)}</ul>
+      <p><strong>{html.escape(selection_type)}:</strong> {html.escape(selection_label)}</p>
+      <p>{html.escape(status_message)}</p>
     </div>
-    <p class="muted">The YAML content and refresh token are not displayed.</p>
   """
   return render_page("Credentials saved", body)
