@@ -358,6 +358,43 @@ def upload_to_gcs(bucket_name: str, object_name: str, value: str) -> str:
   return f"gs://{bucket_name}/{object_name}"
 
 
+def wait_for_operation(
+  session: AuthorizedSession,
+  operation: dict[str, Any],
+  action: str,
+  timeout_seconds: int = 120,
+) -> None:
+  deadline = time.monotonic() + timeout_seconds
+  current = operation
+  while True:
+    if current.get("done"):
+      if error := current.get("error"):
+        raise HTTPException(
+          status_code=500,
+          detail=f"Failed to {action}: {json.dumps(error)}",
+        )
+      return
+    operation_name = current.get("name")
+    if not operation_name:
+      raise HTTPException(
+        status_code=500,
+        detail=f"Failed to {action}: Cloud Run returned no operation name",
+      )
+    if time.monotonic() >= deadline:
+      raise HTTPException(
+        status_code=504,
+        detail=f"Timed out waiting to {action}",
+      )
+    time.sleep(1)
+    response = session.get(f"https://run.googleapis.com/v2/{operation_name}")
+    if response.status_code != 200:
+      raise HTTPException(
+        status_code=500,
+        detail=f"Failed to check {action}: {response.text}",
+      )
+    current = response.json()
+
+
 def update_cloud_run_job_env(project: str, region: str, job_name: str, env_vars: dict[str, str]) -> None:
   session = authorized_session()
   resource_name = f"projects/{project}/locations/{region}/jobs/{job_name}"
@@ -379,16 +416,17 @@ def update_cloud_run_job_env(project: str, region: str, job_name: str, env_vars:
       by_name[name]["value"] = value
     else:
       env.append({"name": name, "value": value})
-  body = {"template": {"template": {"containers": containers}}}
-  patch_response = session.patch(
-    f"{url}?updateMask=template.template.containers",
-    json=body,
-  )
+  patch_response = session.patch(url, json=job)
   if patch_response.status_code not in {200, 201}:
     raise HTTPException(
       status_code=500,
       detail=f"Failed to update Cloud Run job {job_name}: {patch_response.text}",
     )
+  wait_for_operation(
+    session,
+    patch_response.json(),
+    f"update Cloud Run job {job_name}",
+  )
 
 
 def run_cloud_run_job(project: str, region: str, job_name: str) -> str:
